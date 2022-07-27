@@ -256,7 +256,7 @@ class IAACompressor : public Compressor {
     return Status::OK();
   }
 
-  bool IsDictionaryEnabled() const override { return false; }
+  bool IsDictEnabled() const override { return false; }
 
  private:
   IAACompressorOptions options_;
