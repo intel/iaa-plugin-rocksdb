@@ -7,7 +7,7 @@ For more information about plugin support in RocksDB, refer to the [instructions
 
 # Building RocksDB with the IAA Plugin
 
-- Install QPL. Follow the instructions [here](https://github.com/intel/qpl). The IAA plugin was tested with QPL [v0.1.21](https://github.com/intel/qpl/releases/tag/v0.1.21). Note that to access the hardware path and configure IAA, kernel 5.18 and accel-config are required, as described in QPL's [system requirements](https://intel.github.io/qpl/documentation/introduction_docs/system_requirements.html).
+- Install QPL. Follow the instructions [here](https://github.com/intel/qpl). The IAA plugin was tested with QPL [v0.2.1](https://github.com/intel/qpl/releases/tag/v0.2.1). Note that to access the hardware path and configure IAA, kernel 5.18 and accel-config are required, as described in QPL's [system requirements](https://intel.github.io/qpl/documentation/introduction_docs/system_requirements.html).
     
 - Clone RocksDB with pluggable compression support, under review in [PR6717](https://github.com/facebook/rocksdb/pull/6717)
 
@@ -104,8 +104,8 @@ The compressor offers several options:
   - "dynamic": for compression, a Huffman table is computed each time (requires two passes over the data, but provides, in general, better compression ratio).
   - "fixed": a predefined Huffman table is used.
 - verify
-  - "yes": run verification for compression (decompress and verify data matches original).
-  - "no": skip verification.
+  - "true": run verification for compression (decompress and verify data matches original).
+  - "false": skip verification.
 - level
   - "0" or kDefaultCompressionLevel (defined in RocksDB): default compression level (supported by hardware and software path).
   - otherwise: high compression level (supported only by software path).

@@ -125,25 +125,29 @@ class IAACompressor : public Compressor {
     qpl_compression_levels level = GetQplLevel(options_.level);
     qpl_path_t execution_path = options_.execution_path;
 
+    if (level == qpl_high_level && execution_path == qpl_path_hardware) {
+      execution_path = qpl_path_software;
+    }
+
     qpl_job* job;
-    if (deflate_job_[execution_path] == nullptr) {
+    if (jobs_[execution_path] == nullptr) {
       uint32_t size;
       status = qpl_get_job_size(execution_path, &size);
       if (status != QPL_STS_OK) {
         return Status::Corruption(QPL_STATUS(status));
       }
       try {
-        deflate_job_[execution_path] = std::make_unique<char[]>(size);
+        jobs_[execution_path] = std::make_unique<char[]>(size);
       } catch (std::bad_alloc& e) {
         return Status::Corruption(MEMORY_ALLOCATION_ERROR);
       }
-      job = reinterpret_cast<qpl_job*>(deflate_job_[execution_path].get());
+      job = reinterpret_cast<qpl_job*>(jobs_[execution_path].get());
       status = qpl_init_job(execution_path, job);
       if (status != QPL_STS_OK) {
         return Status::Corruption(QPL_STATUS(status));
       }
     } else {
-      job = reinterpret_cast<qpl_job*>(deflate_job_[execution_path].get());
+      job = reinterpret_cast<qpl_job*>(jobs_[execution_path].get());
     }
 
     uint8_t* source =
@@ -161,7 +165,7 @@ class IAACompressor : public Compressor {
     if (!options_.verify) {
       job->flags |= QPL_FLAG_OMIT_VERIFY;
     }
-    job->compression_huffman_table = nullptr;
+    job->huffman_table = nullptr;
     job->dictionary = nullptr;
 
     if (options_.compression_mode == dynamic_mode) {
@@ -204,26 +208,26 @@ class IAACompressor : public Compressor {
 
     qpl_status status;
     qpl_job* job;
-    if (inflate_job_[options_.execution_path] == nullptr) {
+    if (jobs_[options_.execution_path] == nullptr) {
       uint32_t size;
       status = qpl_get_job_size(options_.execution_path, &size);
       if (status != QPL_STS_OK) {
         return Status::Corruption(QPL_STATUS(status));
       }
       try {
-        inflate_job_[options_.execution_path] = std::make_unique<char[]>(size);
+        jobs_[options_.execution_path] = std::make_unique<char[]>(size);
       } catch (std::bad_alloc& e) {
         return Status::Corruption(MEMORY_ALLOCATION_ERROR);
       }
       job = reinterpret_cast<qpl_job*>(
-          inflate_job_[options_.execution_path].get());
+          jobs_[options_.execution_path].get());
       status = qpl_init_job(options_.execution_path, job);
       if (status != QPL_STS_OK) {
         return Status::Corruption(QPL_STATUS(status));
       }
     } else {
       job = reinterpret_cast<qpl_job*>(
-          inflate_job_[options_.execution_path].get());
+          jobs_[options_.execution_path].get());
     }
 
     uint8_t* source =
@@ -235,7 +239,7 @@ class IAACompressor : public Compressor {
     job->next_out_ptr = destination;
     job->available_out = encoded_output_length;
     job->op = qpl_op_decompress;
-    job->decompression_huffman_table = nullptr;
+    job->huffman_table = nullptr;
     job->flags = QPL_FLAG_FIRST | QPL_FLAG_LAST;
     job->flags |= QPL_FLAG_OMIT_CHECKSUMS;
 
@@ -260,8 +264,7 @@ class IAACompressor : public Compressor {
 
  private:
   IAACompressorOptions options_;
-  static thread_local std::vector<std::unique_ptr<char[]>> deflate_job_;
-  static thread_local std::vector<std::unique_ptr<char[]>> inflate_job_;
+  static thread_local std::vector<std::unique_ptr<char[]>> jobs_;
   std::shared_ptr<Logger> logger_;
 
   uint32_t EncodeSize(size_t length, std::string* output) {
@@ -294,9 +297,7 @@ class IAACompressor : public Compressor {
 
 // Reuse job structs across calls. Have one struct per thread and execution path
 // (hw, sw, auto).
-thread_local std::vector<std::unique_ptr<char[]>> IAACompressor::deflate_job_(
-    3);
-thread_local std::vector<std::unique_ptr<char[]>> IAACompressor::inflate_job_(
+thread_local std::vector<std::unique_ptr<char[]>> IAACompressor::jobs_(
     3);
 
 std::unique_ptr<Compressor> NewIAACompressor() {

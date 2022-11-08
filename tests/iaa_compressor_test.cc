@@ -340,18 +340,24 @@ TEST_P(IAACompressorTest, CompressDecompress) {
   100, 1 << 8, 1000, 1 << 10, 1 << 12, 1 << 14, 1 << 16, 100000, 1000000, \
       1 << 20
 
-INSTANTIATE_TEST_SUITE_P(CompressDecompressSW, IAACompressorTest,
+INSTANTIATE_TEST_SUITE_P(CompressSWDecompressSW, IAACompressorTest,
                          testing::Combine(testing::Values("sw"),
                                           testing::Values("dynamic", "fixed"),
-                                          testing::Values(""),
+                                          testing::Values("level=0", "level=1"),
                                           testing::Values(BLOCK_SIZES),
                                           testing::Values(1)));
 
 #ifndef EXCLUDE_HW_TESTS
 INSTANTIATE_TEST_SUITE_P(
-    CompressDecompressHW, IAACompressorTest,
+    CompressHWDecompressHW, IAACompressorTest,
     testing::Combine(testing::Values("hw"), testing::Values("dynamic", "fixed"),
                      testing::Values("verify=false", "verify=true"),
+                     testing::Values(BLOCK_SIZES), testing::Values(1)));
+
+INSTANTIATE_TEST_SUITE_P(
+    CompressSWDecompressHW, IAACompressorTest,
+    testing::Combine(testing::Values("hw"), testing::Values("dynamic"),
+                     testing::Values("level=1"),
                      testing::Values(BLOCK_SIZES), testing::Values(1)));
 #endif  // EXCLUDE_HW_TESTS
 
