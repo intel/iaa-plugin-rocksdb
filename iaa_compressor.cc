@@ -25,6 +25,7 @@ namespace ROCKSDB_NAMESPACE {
 
 // Error messages
 #define MEMORY_ALLOCATION_ERROR "memory allocation error"
+#define JOB_INIT_ERROR "job init error"
 #define QPL_STATUS(status) "QPL status " + std::to_string(status)
 
 extern "C" FactoryFunc<Compressor> iaa_compressor_reg;
@@ -78,6 +79,48 @@ static std::unordered_map<std::string, OptionTypeInfo>
           OptionType::kUInt32T, OptionVerificationType::kNormal,
           OptionTypeFlags::kNone}}};
 
+class IAAJob {
+ public:
+  IAAJob() : jobs_(3, nullptr) {
+    InitJob(qpl_path_hardware);
+    InitJob(qpl_path_software);
+    InitJob(qpl_path_auto);
+  }
+
+  ~IAAJob() {
+    for (qpl_job* job : jobs_) {
+      if (job != nullptr) {
+        qpl_fini_job(job);
+        delete[] job;
+      }
+    }
+  }
+
+  qpl_job* GetJob(qpl_path_t execution_path) { return jobs_[execution_path]; }
+
+ private:
+  void InitJob(qpl_path_t execution_path) {
+    uint32_t size;
+    qpl_status status = qpl_get_job_size(execution_path, &size);
+    if (status != QPL_STS_OK) {
+      jobs_[execution_path] = nullptr;
+      return;
+    }
+    try {
+      jobs_[execution_path] = reinterpret_cast<qpl_job*>(new char[size]);
+    } catch (std::bad_alloc& e) {
+      jobs_[execution_path] = nullptr;
+      return;
+    }
+    status = qpl_init_job(execution_path, jobs_[execution_path]);
+    if (status != QPL_STS_OK) {
+      jobs_[execution_path] = nullptr;
+    }
+  }
+
+  std::vector<qpl_job*> jobs_;
+};
+
 class IAACompressor : public Compressor {
  public:
   IAACompressor() {
@@ -129,25 +172,9 @@ class IAACompressor : public Compressor {
       execution_path = qpl_path_software;
     }
 
-    qpl_job* job;
-    if (jobs_[execution_path] == nullptr) {
-      uint32_t size;
-      status = qpl_get_job_size(execution_path, &size);
-      if (status != QPL_STS_OK) {
-        return Status::Corruption(QPL_STATUS(status));
-      }
-      try {
-        jobs_[execution_path] = std::make_unique<char[]>(size);
-      } catch (std::bad_alloc& e) {
-        return Status::Corruption(MEMORY_ALLOCATION_ERROR);
-      }
-      job = reinterpret_cast<qpl_job*>(jobs_[execution_path].get());
-      status = qpl_init_job(execution_path, job);
-      if (status != QPL_STS_OK) {
-        return Status::Corruption(QPL_STATUS(status));
-      }
-    } else {
-      job = reinterpret_cast<qpl_job*>(jobs_[execution_path].get());
+    qpl_job* job = job_.GetJob(execution_path);
+    if (job == nullptr) {
+      return Status::Corruption(JOB_INIT_ERROR);
     }
 
     uint8_t* source =
@@ -161,7 +188,7 @@ class IAACompressor : public Compressor {
     job->available_out = output_length - output_header_length;
     job->level = level;
     job->op = qpl_op_compress;
-    job->flags = QPL_FLAG_FIRST | QPL_FLAG_LAST | QPL_FLAG_OMIT_CHECKSUMS;
+    job->flags = QPL_FLAG_FIRST | QPL_FLAG_LAST;
     if (!options_.verify) {
       job->flags |= QPL_FLAG_OMIT_VERIFY;
     }
@@ -207,27 +234,9 @@ class IAACompressor : public Compressor {
     }
 
     qpl_status status;
-    qpl_job* job;
-    if (jobs_[options_.execution_path] == nullptr) {
-      uint32_t size;
-      status = qpl_get_job_size(options_.execution_path, &size);
-      if (status != QPL_STS_OK) {
-        return Status::Corruption(QPL_STATUS(status));
-      }
-      try {
-        jobs_[options_.execution_path] = std::make_unique<char[]>(size);
-      } catch (std::bad_alloc& e) {
-        return Status::Corruption(MEMORY_ALLOCATION_ERROR);
-      }
-      job = reinterpret_cast<qpl_job*>(
-          jobs_[options_.execution_path].get());
-      status = qpl_init_job(options_.execution_path, job);
-      if (status != QPL_STS_OK) {
-        return Status::Corruption(QPL_STATUS(status));
-      }
-    } else {
-      job = reinterpret_cast<qpl_job*>(
-          jobs_[options_.execution_path].get());
+    qpl_job* job = job_.GetJob(options_.execution_path);
+    if (job == nullptr) {
+      return Status::Corruption(JOB_INIT_ERROR);
     }
 
     uint8_t* source =
@@ -241,7 +250,6 @@ class IAACompressor : public Compressor {
     job->op = qpl_op_decompress;
     job->huffman_table = nullptr;
     job->flags = QPL_FLAG_FIRST | QPL_FLAG_LAST;
-    job->flags |= QPL_FLAG_OMIT_CHECKSUMS;
 
     status = QPL_STS_QUEUES_ARE_BUSY_ERR;
     while (status == QPL_STS_QUEUES_ARE_BUSY_ERR) {
@@ -264,7 +272,7 @@ class IAACompressor : public Compressor {
 
  private:
   IAACompressorOptions options_;
-  static thread_local std::vector<std::unique_ptr<char[]>> jobs_;
+  static thread_local IAAJob job_;
   std::shared_ptr<Logger> logger_;
 
   uint32_t EncodeSize(size_t length, std::string* output) {
@@ -297,8 +305,7 @@ class IAACompressor : public Compressor {
 
 // Reuse job structs across calls. Have one struct per thread and execution path
 // (hw, sw, auto).
-thread_local std::vector<std::unique_ptr<char[]>> IAACompressor::jobs_(
-    3);
+thread_local IAAJob IAACompressor::job_;
 
 std::unique_ptr<Compressor> NewIAACompressor() {
   return std::unique_ptr<Compressor>(new IAACompressor());

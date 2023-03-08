@@ -354,11 +354,12 @@ INSTANTIATE_TEST_SUITE_P(
                      testing::Values("verify=false", "verify=true"),
                      testing::Values(BLOCK_SIZES), testing::Values(1)));
 
-INSTANTIATE_TEST_SUITE_P(
-    CompressSWDecompressHW, IAACompressorTest,
-    testing::Combine(testing::Values("hw"), testing::Values("dynamic"),
-                     testing::Values("level=1"),
-                     testing::Values(BLOCK_SIZES), testing::Values(1)));
+INSTANTIATE_TEST_SUITE_P(CompressSWDecompressHW, IAACompressorTest,
+                         testing::Combine(testing::Values("hw"),
+                                          testing::Values("dynamic"),
+                                          testing::Values("level=1"),
+                                          testing::Values(BLOCK_SIZES),
+                                          testing::Values(1)));
 #endif  // EXCLUDE_HW_TESTS
 
 }  // namespace ROCKSDB_NAMESPACE

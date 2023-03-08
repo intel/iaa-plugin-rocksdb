@@ -4,4 +4,4 @@
 
 iaa_compressor_SOURCES = iaa_compressor.cc
 iaa_compressor_HEADERS = iaa_compressor.h
-iaa_compressor_LDFLAGS = -lqpl -u iaa_compressor_reg
+iaa_compressor_LDFLAGS = -lqpl -ldl -u iaa_compressor_reg
