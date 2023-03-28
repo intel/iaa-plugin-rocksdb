@@ -7,8 +7,8 @@ For more information about plugin support in RocksDB, refer to the [instructions
 
 # Building RocksDB with the IAA Plugin
 
-- Install QPL. Follow the instructions in QPL's [readme](https://github.com/intel/qpl). The IAA plugin was tested with QPL [v1.1.0](https://github.com/intel/qpl/releases/tag/v1.1.0). Note that to access the hardware path and configure IAA, kernel 5.18 and accel-config are required, as described in QPL's [system requirements](https://intel.github.io/qpl/documentation/get_started_docs/system_requirements.html).
-    
+- Install QPL. Follow the instructions in QPL's [readme](https://github.com/intel/qpl). The IAA plugin was tested with QPL [v1.1.0](https://github.com/intel/qpl/releases/tag/v1.1.0). Note that to access the hardware path and configure IAA, kernel 5.18 and accel-config are required, as described in QPL's [system requirements](https://intel.github.io/qpl/documentation/get_started_docs/system_requirements.html). The plugin requires shared workqueues to be configured with block_on_fault enabled.
+
 - Clone RocksDB with pluggable compression support, under review in [PR6717](https://github.com/facebook/rocksdb/pull/6717)
 
 ```
@@ -22,7 +22,7 @@ cd rocksdb
 git clone https://github.com/intel/iaa-plugin-rocksdb.git plugin/iaa_compressor
 ```
 
-- Build RocksDB with the IAA plugin
+### Build with make
 
 ```
 ROCKSDB_PLUGINS="iaa_compressor" make -j release
@@ -34,7 +34,7 @@ If QPL was not installed in a default directory, add EXTRA_CXXFLAGS and EXTRA_LD
 EXTRA_CXXFLAGS="-I<qpl_install_directory>/include" EXTRA_LDFLAGS="-L<qpl_install_directory>/lib64" ROCKSDB_PLUGINS="iaa_compressor" make -j release
 ```
 
-To build with CMake, use the following commands instead
+### Build with CMake
 
 ```
 mkdir build
@@ -49,6 +49,7 @@ If QPL was not installed in a default directory, add CXXFLAGS and LDFLAGS in the
 CXXFLAGS="-I/<qpl_install_directory>/include" LDFLAGS="-L<qpl_install_directory>lib64" cmake .. -DROCKSDB_PLUGINS="iaa_compressor"
 ```
 
+### Verify Installation
 To verify the installation, you can use db_bench and verify no errors are reported. The first command below verifies the software path, the second the hardware path.
 
 ```
@@ -86,33 +87,47 @@ To run only tests using the QPL software path (not using the IAA hardware), use 
 
 # Using the Plugin
 
-To use the IAA plugin for compression/decompression, select it as compression type just like any other algorithm. For example, to select in db_bench
+To use the IAA plugin for compression/decompression, select it as compression type (com.intel.iaa_compressor_rocksdb) just like any other algorithm. Refer to the examples in [PR6717](https://github.com/facebook/rocksdb/pull/6717). The reverse domain naming convention was selected to avoid conflicts in the future as more plugins are available. 
+
+In the following examples, execution_path is used as an example of compressor options. You can use any combination of supported options (refer to the Compressor Options section) in a semicolon-separated list.
+
+To configure RocksDB using an option string
 
 ```
-./db_bench --compression_type=com.intel.iaa_compressor_rocksdb
+compressor={id=com.intel.iaa_compressor_rocksdb;execution_path=hw}
 ```
 
-The reverse domain naming convention was selected to avoid conflicts in the future as more plugins are available.
+To configure RocksDB using an Options object
+
+```
+Options options;
+ConfigOptions config_options;
+  Status s = Compressor::CreateFromString(
+      config_options,
+      "id=com.intel.iaa_compressor_rocksdb;execution_path=hw",
+      &options.compressor);
+```
+
+To select in db_bench
+
+```
+./db_bench --compression_type=com.intel.iaa_compressor_rocksdb  --compressor_options="execution_path=hw"
+```
+
+# Compressor Options
 
 The compressor offers several options:
 - execution_path
+  - "auto" (default): QPL decides whether to use the hardware or software path.
   - "hw": QPL will use the IAA hardware.
   - "sw": QPL will run compression/decompression in software.
-  - "auto": QPL decides whether to use the hardware or software path.
-  - Note: hw and sw path are not fully interoperable yet. Compressing data with the sw path and decompressing with the hw path is not yet fully supported or tested.
 - compression_mode
-  - "dynamic": for compression, a Huffman table is computed each time (requires two passes over the data, but provides, in general, better compression ratio).
+  - "dynamic" (default): for compression, a Huffman table is computed each time (requires two passes over the data, but provides, in general, better compression ratio).
   - "fixed": a predefined Huffman table is used.
 - verify
   - "true": run verification for compression (decompress and verify data matches original).
-  - "false": skip verification.
+  - "false" (default): skip verification.
 - level
-  - "0" or kDefaultCompressionLevel (defined in RocksDB): default compression level (supported by hardware and software path).
+  - "0" or kDefaultCompressionLevel (default): default compression level (supported by hardware and software path).
   - otherwise: high compression level (supported only by software path).
-- parallel_threads: refer to the parallel_threads option in RocksDB.
-
-To pass options to the compressor in db_bench, refer to the example below
-
-```
-./db_bench --compression_type=com.intel.iaa_compressor_rocksdb --compressor_options="execution_path=hw"
-```
+- parallel_threads: refer to the parallel_threads option in RocksDB. Default = 1.
