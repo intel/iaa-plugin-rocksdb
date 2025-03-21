@@ -7,7 +7,7 @@ For more information about plugin support in RocksDB, refer to the [instructions
 
 # Building RocksDB with the IAA Plugin
 
-- Install QPL. Follow the instructions in QPL's [readme](https://github.com/intel/qpl). The IAA plugin was tested with QPL [v1.1.0](https://github.com/intel/qpl/releases/tag/v1.1.0). Note that to access the hardware path and configure IAA, kernel 5.18 and accel-config are required, as described in QPL's [system requirements](https://intel.github.io/qpl/documentation/get_started_docs/system_requirements.html). The plugin requires shared workqueues to be configured with block_on_fault enabled.
+- Install QPL. Follow the instructions in QPL's [readme](https://github.com/intel/qpl). The IAA plugin was tested with QPL [v1.7.0](https://github.com/intel/qpl/releases/tag/v1.7.0). Note that to access the hardware path and configure IAA, kernel 5.18 and accel-config are required, as described in QPL's [system requirements](https://intel.github.io/qpl/documentation/get_started_docs/system_requirements.html). The plugin requires shared workqueues to be configured with block_on_fault enabled.
 
 - Clone RocksDB with pluggable compression support, under review in [PR6717](https://github.com/facebook/rocksdb/pull/6717)
 
