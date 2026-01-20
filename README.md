@@ -1,5 +1,5 @@
 # Intel&reg; In-Memory Analytics Accelerator Plugin for RocksDB Storage Engine
-The Intel&reg; In-Memory Analytics Accelerator (IAA) plugin for RocksDB provides accelerated compression/decompression in RocksDB using IAA and [QPL](https://github.com/intel/qpl) (Query Processing Library). It is dependent on the pluggable compression framework offered in [PR6717](https://github.com/facebook/rocksdb/pull/6717) and currently under review. Note: as the code is under review, it is subject to change. Please use the latest release of this plugin to ensure compatibility with the latest content of the pluggable compression PR.
+The Intel&reg; In-Memory Analytics Accelerator (IAA) plugin for RocksDB provides accelerated compression/decompression in RocksDB using IAA and [QPL](https://github.com/intel/qpl) (Query Processing Library). It is dependent on the pluggable compression framework offered in [PR6717](https://github.com/facebook/rocksdb/pull/6717) that is subject to change. Please use the latest release of this plugin to ensure compatibility with the latest content of the pluggable compression PR.
 
 For more information about the Intel&reg; In-Memory Analytics Accelerator, refer to the [IAA spec](https://cdrdv2.intel.com/v1/dl/getContent/721858) on the [Intel&reg; 64 and IA-32 Architectures Software Developer Manuals](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) page.
 For more information about plugin support in RocksDB, refer to the [instructions](https://github.com/facebook/rocksdb/tree/main/plugin) in RocksDB and [PR 7918](https://github.com/facebook/rocksdb/pull/7918).
@@ -9,7 +9,7 @@ For more information about plugin support in RocksDB, refer to the [instructions
 
 - Install QPL. Follow the instructions in QPL's [readme](https://github.com/intel/qpl). The IAA plugin was tested with QPL [v1.7.0](https://github.com/intel/qpl/releases/tag/v1.7.0). Note that to access the hardware path and configure IAA, kernel 5.18 and accel-config are required, as described in QPL's [system requirements](https://intel.github.io/qpl/documentation/get_started_docs/system_requirements.html). The plugin requires shared workqueues to be configured with block_on_fault enabled.
 
-- Clone RocksDB with pluggable compression support, under review in [PR6717](https://github.com/facebook/rocksdb/pull/6717)
+- Clone RocksDB with pluggable compression support in [PR6717](https://github.com/facebook/rocksdb/pull/6717)
 
 ```
 git clone --branch pluggable_compression https://github.com/lucagiac81/rocksdb.git
